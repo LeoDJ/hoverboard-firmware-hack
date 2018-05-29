@@ -8,14 +8,104 @@
 
 TIM_HandleTypeDef TimHandle;
 uint8_t ppm_count = 0;
-uint32_t timeout = 100;
+uint32_t timeout = 0;
 uint8_t nunchuck_data[6] = {0};
 
 uint8_t i2cBuffer[2];
 
 extern I2C_HandleTypeDef hi2c2;
+extern uint8_t enable;
 DMA_HandleTypeDef hdma_i2c2_rx;
 DMA_HandleTypeDef hdma_i2c2_tx;
+
+#ifdef CONTROL_PWM
+uint16_t pwm_captured_value[2] = {500, 500};
+uint16_t pwm_captured_value_buffer[2] = {500, 500};
+uint32_t pwm_timeout = 0;
+
+bool pwm_valid = true;
+
+#define IN_RANGE(x, low, up) (((x) >= (low)) && ((x) <= (up)))
+
+#define PERIOD_TICKS 1200
+
+void PWM_ISR_Callback_PA2() {
+    if (GPIOA->IDR & GPIO_PIN_2 && TIM2->CNT < PERIOD_TICKS) {
+      TIM2->CNT = 0;
+      enable = 1;
+    } else if (TIM2->CNT > PERIOD_TICKS) {
+      TIM2->CNT = 0;
+    } else {
+      pwm_timeout = 0;
+      uint16_t rc_delay = TIM2->CNT;
+      if (IN_RANGE(rc_delay, 50, 1000)) {
+        pwm_captured_value[1] = rc_delay;
+      }
+  }
+}
+
+void PWM_ISR_Callback_PA3() {
+    if (GPIOA->IDR & GPIO_PIN_3 && TIM2->CNT < PERIOD_TICKS) {
+      TIM2->CNT = 0;
+      enable = 1;
+    } else if (TIM2->CNT > PERIOD_TICKS) {
+      TIM2->CNT = 0;
+    } else {
+      pwm_timeout = 0;
+      uint16_t rc_delay = TIM2->CNT;
+      if (IN_RANGE(rc_delay, 50, 1000)) {
+        pwm_captured_value[0] = rc_delay;
+      }
+  }
+}
+
+// SysTick executes once each ms
+void PWM_SysTick_Callback() {
+  pwm_timeout++;
+  // Stop after 500 ms without PPM signal
+  if(pwm_timeout > 100) {
+    enable = 0;
+    int i;
+    for(i = 0; i < 2; i++) {
+      pwm_captured_value[i] = 500;
+    }
+    pwm_timeout = 0;
+  }
+}
+
+void PWM_Init() {
+  GPIO_InitTypeDef GPIO_InitStruct;
+  /*Configure GPIO pin : PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  __HAL_RCC_TIM2_CLK_ENABLE();
+  TimHandle.Instance = TIM2;
+  TimHandle.Init.Period = UINT16_MAX;
+  TimHandle.Init.Prescaler = (SystemCoreClock/DELAY_TIM_FREQUENCY_US)-1;;
+  TimHandle.Init.ClockDivision = 0;
+  TimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
+  HAL_TIM_Base_Init(&TimHandle);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 1);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+  HAL_TIM_Base_Start(&TimHandle);
+}
+#endif
 
 #ifdef CONTROL_PPM
 uint16_t ppm_captured_value[PPM_NUM_CHANNELS + 1] = {500, 500};

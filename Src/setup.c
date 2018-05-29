@@ -1,9 +1,8 @@
 /*
-* This file is part of the hoverboard-firmware-hack project.
+* This file is part of the stmbl project.
 *
-* Copyright (C) 2017-2018 Rene Hopf <renehopf@mac.com>
-* Copyright (C) 2017-2018 Nico Stute <crinq@crinq.de>
-* Copyright (C) 2017-2018 Niklas Fauth <niklas.fauth@kit.fail>
+* Copyright (C) 2013-2018 Rene Hopf <renehopf@mac.com>
+* Copyright (C) 2013-2018 Nico Stute <crinq@crinq.de>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -145,7 +144,9 @@ void UART_Init() {
 */
 
 DMA_HandleTypeDef hdma_i2c2_rx;
+
 DMA_HandleTypeDef hdma_i2c2_tx;
+
 
 void I2C_Init()
 {
@@ -161,7 +162,7 @@ void I2C_Init()
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
   hi2c2.Instance = I2C2;
-  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.ClockSpeed = 200000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -230,6 +231,19 @@ void I2C_Init()
 
 }
 
+void Led_init(void){
+  GPIO_InitTypeDef GPIO_InitStruct;
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  /*Configure GPIO pin Output Level */
+  //HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pin : LED_Pin */
+  GPIO_InitStruct.Pin = LED_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+
+  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+}
+
 void MX_GPIO_Init(void) {
   GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -268,9 +282,6 @@ void MX_GPIO_Init(void) {
 
 
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-
-  GPIO_InitStruct.Pin = LED_PIN;
-  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
 
   GPIO_InitStruct.Pin = BUZZER_PIN;
   HAL_GPIO_Init(BUZZER_PORT, &GPIO_InitStruct);

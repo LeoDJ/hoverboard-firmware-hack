@@ -14,8 +14,8 @@
 
 // ################################################################################
 
-#define DEBUG_SERIAL_USART2
-//#define DEBUG_SERIAL_USART3
+//#define DEBUG_SERIAL_USART2
+#define DEBUG_SERIAL_USART3
 #define DEBUG_BAUD       115200     // UART baud rate
 //#define DEBUG_SERIAL_SERVOTERM
 #define DEBUG_SERIAL_ASCII
@@ -33,7 +33,10 @@
 // #define CONTROL_ADC
 
 // ###### CONTROL VIA NINTENDO NUNCHUCK ######
-#define CONTROL_NUNCHUCK
+// #define CONTROL_NUNCHUCK
+
+// ###### CONTROL VIA TWO PWM ######
+#define CONTROL_PWM
 
 // ################################################################################
 

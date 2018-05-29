@@ -63,6 +63,11 @@ extern uint8_t nunchuck_data[6];
 extern volatile uint16_t ppm_captured_value[PPM_NUM_CHANNELS+1];
 #endif
 
+#ifdef CONTROL_PWM
+extern volatile uint16_t pwm_captured_value[2];
+volatile uint16_t last_pwm_captured_value[2];
+#endif
+
 int milli_vel_error_sum = 0;
 
 int main(void) {
@@ -118,6 +123,10 @@ int main(void) {
     PPM_Init();
   #endif
 
+  #ifdef CONTROL_PWM
+    PWM_Init();
+  #endif
+
   #ifdef CONTROL_NUNCHUCK
     I2C_Init();
     Nunchuck_Init();
@@ -148,7 +157,7 @@ int main(void) {
   enable = 1;
 
   while(1) {
-    HAL_Delay(5);
+    HAL_Delay(10);
 
 
     #ifdef CONTROL_NUNCHUCK
@@ -174,18 +183,29 @@ int main(void) {
       timeout = 0;
     #endif
 
+    #ifdef CONTROL_PWM
+    if (pwm_captured_value[0] > last_pwm_captured_value[0] - 20 && pwm_captured_value[0] < last_pwm_captured_value[0] + 20 && pwm_captured_value[0] > last_pwm_captured_value[0] - 20 && pwm_captured_value[1] < last_pwm_captured_value[1] + 20) {
+        cmd1 = pwm_captured_value[0] - 500;
+        cmd2 = pwm_captured_value[1] - 500;
+      }
+      last_pwm_captured_value[0] = pwm_captured_value[0];
+      last_pwm_captured_value[1] = pwm_captured_value[1];
+    #endif
+
 
     // ####### LOW-PASS FILTER #######
     steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
     speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 
+    setScopeChannel(0, (int)steer);
+    setScopeChannel(1, (int)speed);
+
 
     // ####### MIXER #######
-    speedR = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000);
-    speedL = CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000);
+    speedR = steer;//CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000);
+    speedL = speed;//CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000);
 
-    setScopeChannel(2, (int)speedR);
-    setScopeChannel(3, (int)speedL);
+    //setScopeChannel(1, (int)speedL);
 
     #ifdef ADDITIONAL_CODE
     ADDITIONAL_CODE;
