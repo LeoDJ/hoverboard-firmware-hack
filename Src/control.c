@@ -13,10 +13,19 @@ uint8_t nunchuck_data[6] = {0};
 
 uint8_t i2cBuffer[2];
 
+volatile UART_data_struct commandsequence;
+
 extern I2C_HandleTypeDef hi2c2;
 extern uint8_t enable;
 DMA_HandleTypeDef hdma_i2c2_rx;
 DMA_HandleTypeDef hdma_i2c2_tx;
+
+
+/*#ifdef CONTROL_USART2_RXTX
+void Telemetry_Init(){
+  HAL_UART_Receive_DMA(&huart2, (uint8_t *)&commandsequence, 8);
+}
+#endif*/
 
 #ifdef CONTROL_PWM
 uint16_t pwm_captured_value[2] = {500, 500};

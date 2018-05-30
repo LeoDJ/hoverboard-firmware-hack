@@ -40,6 +40,8 @@ int cmd1;
 int cmd2;
 int cmd3;
 
+volatile extern UART_data_struct commandsequence;
+
 uint8_t button1, button2;
 
 int steer; // global variable for steering. -1000 to 1000
@@ -63,10 +65,16 @@ extern uint8_t nunchuck_data[6];
 extern volatile uint16_t ppm_captured_value[PPM_NUM_CHANNELS+1];
 #endif
 
-#ifdef CONTROL_PWM
-extern volatile uint16_t pwm_captured_value[2];
-volatile uint16_t last_pwm_captured_value[2];
-#endif
+DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart2_tx;
+extern UART_HandleTypeDef huart2;
+
+#define UART2_RX_FIFO_SIZE 32
+
+#define UART2_RX_DMA (DMA1_Channel6)
+
+unsigned char uartCommandBuffer[UART2_RX_FIFO_SIZE];
+
 
 int milli_vel_error_sum = 0;
 
@@ -102,6 +110,11 @@ int main(void) {
     UART_Init();
   #endif
 
+  #ifdef CONTROL_USART2_RXTX)
+    UART_Control_Init();
+    //Telemetry_Init();
+  #endif
+
   HAL_GPIO_WritePin(OFF_PORT, OFF_PIN, 1);
 
   HAL_ADC_Start(&hadc1);
@@ -119,97 +132,40 @@ int main(void) {
   int speedL = 0, speedR = 0;
   float direction = 1;
 
-  #ifdef CONTROL_PPM
-    PPM_Init();
-  #endif
 
-  #ifdef CONTROL_PWM
-    PWM_Init();
-  #endif
-
-  #ifdef CONTROL_NUNCHUCK
-    I2C_Init();
-    Nunchuck_Init();
-  #endif
-
-  #ifdef DEBUG_I2C_LCD
-    I2C_Init();
-    HAL_Delay(50);
-    lcd.pcf8574.PCF_I2C_ADDRESS = 0x27;
-  	lcd.pcf8574.PCF_I2C_TIMEOUT = 5;
-  	lcd.pcf8574.i2c = hi2c2;
-  	lcd.NUMBER_OF_LINES = NUMBER_OF_LINES_2;
-  	lcd.type = TYPE0;
-
-  	if(LCD_Init(&lcd)!=LCD_OK){
-  		// error occured
-  		//TODO while(1);
-  	}
-
-  	LCD_ClearDisplay(&lcd);
-    HAL_Delay(5);
-    LCD_SetLocation(&lcd, 0, 0);
-  	LCD_WriteString(&lcd, "Hover V2.0");
-    LCD_SetLocation(&lcd, 0, 1);
-    LCD_WriteString(&lcd, "Initializing...");
-  #endif
 
   enable = 1;
+  consoleLog("otter\n\r");
 
+  UART2_RX_DMA->CNDTR = UART2_RX_FIFO_SIZE;
+  uartCommandBuffer[0] = 0;
+  HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer, UART2_RX_FIFO_SIZE);
   while(1) {
-    HAL_Delay(10);
+    HAL_Delay(2);
 
 
-    #ifdef CONTROL_NUNCHUCK
-      Nunchuck_Read();
-      cmd1 = CLAMP((nunchuck_data[0] - 127) * 8, -1000, 1000); // x - axis. Nunchuck joystick readings range 30 - 230
-      cmd2 = CLAMP((nunchuck_data[1] - 128) * 8, -1000, 1000); // y - axis
+    #ifdef CONTROL_USART2_RXTX
 
-      button1 = (uint8_t)nunchuck_data[5] & 1;
-      button2 = (uint8_t)(nunchuck_data[5] >> 1) & 1;
-    #endif
+      if (uartCommandBuffer[0] != 0) {
+        int32_t comm_index = 0;
+        while (comm_index != UART2_RX_DMA->CNDTR)
+        {
+            comm_index = UART2_RX_DMA->CNDTR;
+            HAL_Delay(1);
+        }
+        HAL_UART_AbortReceive_IT(&huart2);
+        HAL_Delay(10);
+        setScopeChannel(0, uartCommandBuffer[0]);
 
-    #ifdef CONTROL_PPM
-      cmd1 = CLAMP((ppm_captured_value[0] - 500) * 2, -1000, 1000);
-      cmd2 = CLAMP((ppm_captured_value[1] - 500) * 2, -1000, 1000);
-      button1 = ppm_captured_value[5] > 500;
-      float scale = ppm_captured_value[2] / 1000.0f;
-    #endif
-
-    #ifdef CONTROL_ADC
-      cmd1 = CLAMP(adc_buffer.l_rx2 - 700, 0, 2350) / 2.35; // ADC values range 0-4095, however full range of our poti only covers 650 - 3050
-      uint8_t button1 = (uint8_t)(adc_buffer.l_tx2 > 2000);
-
-      timeout = 0;
-    #endif
-
-    #ifdef CONTROL_PWM
-    if (pwm_captured_value[0] > last_pwm_captured_value[0] - 20 && pwm_captured_value[0] < last_pwm_captured_value[0] + 20 && pwm_captured_value[0] > last_pwm_captured_value[0] - 20 && pwm_captured_value[1] < last_pwm_captured_value[1] + 20) {
-        cmd1 = pwm_captured_value[0] - 500;
-        cmd2 = pwm_captured_value[1] - 500;
+        uartCommandBuffer[0] = 0;
+        UART2_RX_DMA->CNDTR = UART2_RX_FIFO_SIZE;
+        HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer, UART2_RX_FIFO_SIZE);
       }
-      last_pwm_captured_value[0] = pwm_captured_value[0];
-      last_pwm_captured_value[1] = pwm_captured_value[1];
     #endif
 
 
-    // ####### LOW-PASS FILTER #######
-    steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
-    speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
-
-    setScopeChannel(0, (int)steer);
-    setScopeChannel(1, (int)speed);
 
 
-    // ####### MIXER #######
-    speedR = steer;//CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000);
-    speedL = speed;//CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000);
-
-    //setScopeChannel(1, (int)speedL);
-
-    #ifdef ADDITIONAL_CODE
-    ADDITIONAL_CODE;
-    #endif
 
     // ####### SET OUTPUTS #######
     if ((speedL < lastSpeedL + 50 && speedL > lastSpeedL - 50) && (speedR < lastSpeedR + 50 && speedR > lastSpeedR - 50) && timeout < TIMEOUT) {

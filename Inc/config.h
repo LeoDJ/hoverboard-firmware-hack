@@ -21,6 +21,15 @@
 #define DEBUG_SERIAL_ASCII
 //#define DEBUG_I2C_LCD
 
+#define CONTROL_USART2_RXTX
+#define CONTROL_BAUD       115200
+
+typedef struct{
+   float motorR;
+   float motorL;
+   //uint32_t crc;
+} UART_data_struct;
+
 #define TIMEOUT          5           //number of wrong / missing commands before emergency off
 
 // ################################################################################
@@ -36,7 +45,7 @@
 // #define CONTROL_NUNCHUCK
 
 // ###### CONTROL VIA TWO PWM ######
-#define CONTROL_PWM
+//#define CONTROL_PWM
 
 // ################################################################################
 
