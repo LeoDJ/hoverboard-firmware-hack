@@ -22,7 +22,7 @@
 //#define DEBUG_I2C_LCD
 
 #define CONTROL_USART2_RXTX
-#define CONTROL_BAUD       115200
+#define CONTROL_BAUD       57600
 
 typedef struct{
    float motorR;

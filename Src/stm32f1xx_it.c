@@ -165,9 +165,9 @@ void PendSV_Handler(void) {
 void PPM_SysTick_Callback(void);
 #endif
 
-#ifdef CONTROL_PWM
+//#ifdef CONTROL_PWM
 void PWM_SysTick_Callback(void);
-#endif
+//#endif
 void SysTick_Handler(void) {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
@@ -179,9 +179,9 @@ void SysTick_Handler(void) {
   PPM_SysTick_Callback();
 #endif
 
-#ifdef CONTROL_PWM
+//#ifdef CONTROL_PWM
   PWM_SysTick_Callback();
-#endif
+//#endif
   /* USER CODE END SysTick_IRQn 1 */
 }
 

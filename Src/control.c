@@ -68,19 +68,7 @@ void PWM_ISR_Callback_PA3() {
   }
 }
 
-// SysTick executes once each ms
-void PWM_SysTick_Callback() {
-  pwm_timeout++;
-  // Stop after 500 ms without PPM signal
-  if(pwm_timeout > 100) {
-    enable = 0;
-    int i;
-    for(i = 0; i < 2; i++) {
-      pwm_captured_value[i] = 500;
-    }
-    pwm_timeout = 0;
-  }
-}
+
 
 void PWM_Init() {
   GPIO_InitTypeDef GPIO_InitStruct;
