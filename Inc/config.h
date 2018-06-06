@@ -24,73 +24,25 @@
 #define CONTROL_USART2_RXTX
 #define CONTROL_BAUD       57600
 
-typedef struct{
-   float motorR;
-   float motorL;
-   //uint32_t crc;
-} UART_data_struct;
-
 #define TIMEOUT          5           //number of wrong / missing commands before emergency off
 
-// ################################################################################
-
-// ###### CONTROL VIA RC REMOTE ######
-//#define CONTROL_PPM                // use PPM CONTROL_PPM
-//#define PPM_NUM_CHANNELS 6         // number of PPM channels to receive
-
-// ###### CONTROL VIA TWO POTENTIOMETERS ######
-// #define CONTROL_ADC
-
-// ###### CONTROL VIA NINTENDO NUNCHUCK ######
-// #define CONTROL_NUNCHUCK
-
-// ###### CONTROL VIA TWO PWM ######
-//#define CONTROL_PWM
-
-// ################################################################################
-
 // ###### DRIVING BEHAVIOR ######
-#define FILTER              0.1
-#define SPEED_COEFFICIENT   0.5
-#define STEER_COEFFICIENT   0.5
+#define FILTER              0.1 // lower value == softer filter. do not use values <0.01, you will get float precision issues.
 
-//Turno boost at high speeds while button1 is pressed:
-//#define ADDITIONAL_CODE \
-if (button1 && speed > 700) { /* field weakening at high speeds */ \
-  weakl = cmd1 - 700; /* weak should never exceed 400 or 450 MAX!! */ \
-  weakr = cmd1 - 700; } \
-else { \
-  weakl = 0; \
-  weakr = 0; }
+#define IDLE        0
+#define FOLLOW      1
+#define STOP        2
+#define FORWARD     3
+#define BACKWARD    4
+#define LEFT        5
+#define RIGHT       6
+#define GLIDE       7
 
-// ###### BOBBYCAR ######
-// #define FILTER              0.1
-// #define SPEED_COEFFICIENT   -1
-// #define STEER_COEFFICIENT   0
+#define DISTANCE         40 // set distance for following. No unit, 40 ^~ 2m
+#define FORWARD_SPEED   100 // remote control forward speed
+#define BACKWARD_SPEED -100 // remote control backward speed
 
-// #define ADDITIONAL_CODE \
-if (button1 && speedR < 300) { \
-  speedR = speedR * -0.2f;   \
-  speedL = speedL * -0.2f; } \
-else { \
-  direction = 1; } \
-if (button1 && speedR > 700) { /* field weakening at high speeds */ \
-  weakl = speedR - 600; /* weak should never exceed 400 or 450 MAX!! */ \
-  weakr = speedR - 600; } \
-else { \
-  weakl = 0; \
-  weakr = 0; }
+#define LEFT_SPEED      120 // remote control turn left speed
+#define RIGHT_SPEED    -120 // remote control turn right speed
 
-// ###### ARMCHAIR ######
-// #define FILTER              0.05
-// #define SPEED_COEFFICIENT   0.5
-// #define STEER_COEFFICIENT   -0.2
-
-// #define ADDITIONAL_CODE if (button1 && scale > 0.8) { /* field weakening at high speeds */ \
-  weakl = speedL - 600; /* weak should never exceed 400 or 450 MAX!! */ \
-  weakr = speedR - 600; } \
-else {\
-  weakl = 0;\
-  weakr = 0;
-
-// #define BEEPS_BACKWARD
+#define FOLLOW_P         10 // proportional P for follow regulator

@@ -13,8 +13,6 @@ uint8_t nunchuck_data[6] = {0};
 
 uint8_t i2cBuffer[2];
 
-volatile UART_data_struct commandsequence;
-
 extern I2C_HandleTypeDef hi2c2;
 extern uint8_t enable;
 DMA_HandleTypeDef hdma_i2c2_rx;

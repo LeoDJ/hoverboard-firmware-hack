@@ -40,8 +40,6 @@ int cmd1;
 int cmd2;
 int cmd3;
 
-volatile extern UART_data_struct commandsequence;
-
 uint8_t button1, button2;
 
 int steer; // global variable for steering. -1000 to 1000
@@ -61,9 +59,6 @@ extern volatile uint32_t timeout; // global variable for timeout
 extern float batteryVoltage; // global variable for battery voltage
 
 extern uint8_t nunchuck_data[6];
-#ifdef CONTROL_PPM
-extern volatile uint16_t ppm_captured_value[PPM_NUM_CHANNELS+1];
-#endif
 
 uint32_t buttonReleaseTime = 0;
 
@@ -90,7 +85,6 @@ uint8_t ASCIItoINT(char input) {
   }
   return integer;
 }
-
 
 uint32_t pwm_timeout = 0;
 // SysTick executes once each ms
@@ -158,10 +152,7 @@ int main(void) {
   int speedL = 0, speedR = 0;
   float direction = 1;
 
-
-
   enable = 1;
-  //consoleLog("otter\n\r");
 
   UART2_RX_DMA->CNDTR = UART2_RX_FIFO_SIZE;
   uartCommandBuffer[0] = 0;
@@ -171,67 +162,46 @@ int main(void) {
 
   HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer, UART2_RX_FIFO_SIZE);
 
-
-  #define IDLE        0
-  #define FOLLOW      1
-  #define STOP        2
-  #define FORWARD     3
-  #define BACKWARD    4
-  #define LEFT        5
-  #define RIGHT       6
-  #define GLIDE       7
-
   uint8_t driveMode = 1;
   int16_t steerValue = 0;
   int16_t steerOverwrite = 0;
   while(1) {
     HAL_Delay(1);
 
-    //buttonReleaseTime++;
-
-    #define DISTANCE 40
-
-
     #ifdef CONTROL_USART2_RXTX
-
-      //if (UART2_RX_DMA->CNDTR <= (32-15)) {
-        //int32_t comm_index = 0;
-        //while (comm_index != UART2_RX_DMA->CNDTR)
-        //{
-          //  comm_index = UART2_RX_DMA->CNDTR;
-            //HAL_Delay(2);
-        //}
-
-        //HAL_Delay(10);
-        //if (UART2_RX_DMA->CNDTR == 25) {
-
         uint8_t driveMode;
         uint8_t lastDriveMode;
+        uint8_t lastWasSteerMode;
+        uint8_t lastSteerMode;
 
-        if (UART2_RX_DMA->CNDTR < (32-7)) {
+        if (UART2_RX_DMA->CNDTR < (32-7)) { // if a whole packet is received...
           for (int i = 0; i < 8; i++) {
-            if (uartCommandBuffer[i] == 97 && uartCommandBuffer[i+6] == 13) {
-              rightreceive = ASCIItoINT(uartCommandBuffer[i+3]) + (ASCIItoINT(uartCommandBuffer[i+2])*16);
+            if (uartCommandBuffer[i] == 97 && uartCommandBuffer[i+6] == 13) { //...search for the framing
+              rightreceive = ASCIItoINT(uartCommandBuffer[i+3]) + (ASCIItoINT(uartCommandBuffer[i+2])*16); //parse recived distances
               leftreceive = ASCIItoINT(uartCommandBuffer[i+5]) + (ASCIItoINT(uartCommandBuffer[i+4])*16);
 
               if (uartCommandBuffer[i+1] == 63) {
                 driveMode = FOLLOW;
               } else if (uartCommandBuffer[i+1] == 52  && driveMode != FORWARD && cmd1 > -20 && cmd1 < 20 && buttonReleaseTime > 200) {
                 driveMode = FORWARD;
-                cmd1 = 100;
-                cmd2 = 100;
+                cmd1 = FORWARD_SPEED;
+                cmd2 = FORWARD_SPEED;
               }
               else if (uartCommandBuffer[i+1] == 56  && driveMode != BACKWARD && cmd1 > -20 && cmd1 < 20 && buttonReleaseTime > 200) {
                 driveMode = BACKWARD;
-                cmd1 = -100;
-                cmd2 = -100;
+                cmd1 = BACKWARD_SPEED;
+                cmd2 = BACKWARD_SPEED;
               }
-              else if (uartCommandBuffer[i+1] == 50  && driveMode != LEFT) {
+              else if (uartCommandBuffer[i+1] == 50  && (driveMode != LEFT || lastDriveMode != LEFT)) {
+                lastSteerMode = driveMode;
                 driveMode = LEFT;
-                steerValue = 120;
-              } else if (uartCommandBuffer[i+1] == 49  && driveMode != RIGHT) {
+                lastDriveMode = LEFT;
+                steerValue = LEFT_SPEED;
+              } else if (uartCommandBuffer[i+1] == 49  && (driveMode != RIGHT || lastDriveMode != RIGHT)) {
+                lastSteerMode = driveMode;
                 driveMode = RIGHT;
-                steerValue = -120;
+                lastDriveMode = RIGHT;
+                steerValue = RIGHT_SPEED;
               } else if (uartCommandBuffer[i+1] == 53  && driveMode != STOP) {
                 driveMode = STOP;
                 lastDriveMode = 0;
@@ -240,11 +210,16 @@ int main(void) {
               } else if (uartCommandBuffer[i+1] == 57  && driveMode != GLIDE) {
                 driveMode = GLIDE;
                 enable = 0;
+                cmd1 = 0;
+                cmd2 = 0;
+              } else  if (uartCommandBuffer[i+1] == 48){
+                lastDriveMode = 0;
               }
 
               if (driveMode == LEFT && steerValue < 200 && uartCommandBuffer[i+1] == 50) {
                 steerValue += 2;
                 steerOverwrite = steerValue;
+                lastWasSteerMode = 1;
                 //cmd1 += steerValue;
                 //cmd2 -= steerValue;
               }
@@ -252,6 +227,7 @@ int main(void) {
               if (driveMode == RIGHT && steerValue > -200 && uartCommandBuffer[i+1] == 49) {
                 steerValue -= 2;
                 steerOverwrite = steerValue;
+                lastWasSteerMode = 1;
                 //cmd1 += steerValue;
                 //cmd2 -= steerValue;
               }
@@ -259,6 +235,12 @@ int main(void) {
               if (uartCommandBuffer[i+1] != 49 && uartCommandBuffer[i+1] != 50) {
                 steerValue = 0;
                 steerOverwrite = 0;
+              }
+
+              if (uartCommandBuffer[i+1] != 49 && uartCommandBuffer[i+1] != 50 && lastWasSteerMode) {
+                lastWasSteerMode = 0;
+                driveMode = lastSteerMode;
+                lastSteerMode = IDLE;
               }
 
               if (uartCommandBuffer[i+1] == 52 || uartCommandBuffer[i+1] == 56) {
@@ -289,19 +271,16 @@ int main(void) {
                 if (rightreceive < DISTANCE) {
                   cmd1 = 0;
                 } else {
-                  cmd1 = ((rightreceive - DISTANCE) - 25) * 10;
+                  cmd1 = ((rightreceive - DISTANCE) - 10) * FOLLOW_P;
                 }
 
                 if (leftreceive < DISTANCE) {
                   cmd2 = 0;
                 } else {
-                  cmd2 = ((leftreceive - DISTANCE) - 25) * 10;
+                  cmd2 = ((leftreceive - DISTANCE) - 10) * FOLLOW_P;
                 }
               }
-              //setScopeChannel(1, rightreceive);
-              //setScopeChannel(2, leftreceive);
-              //setScopeChannel(3, 0);
-              //consoleScope();
+
               HAL_UART_AbortReceive_IT(&huart2);
               UART2_RX_DMA->CNDTR = UART2_RX_FIFO_SIZE;
               HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer, UART2_RX_FIFO_SIZE);
@@ -314,25 +293,15 @@ int main(void) {
           }
         }
 
-
-        if (UART2_RX_DMA->CNDTR < (32 - 15)) {
+        if (UART2_RX_DMA->CNDTR < (32 - 15)) { // receive bluetooth packets
           HAL_UART_AbortReceive_IT(&huart2);
           UART2_RX_DMA->CNDTR = UART2_RX_FIFO_SIZE;
           HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer, UART2_RX_FIFO_SIZE);
-
         }
-
-
-        //uartCommandBuffer[0] = 0;
-
-    //  }
     #endif
 
     steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
     speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
-
-
-
 
     speedR = steer - steerOverwrite;
     speedL = speed + steerOverwrite;
@@ -347,9 +316,6 @@ int main(void) {
 
     lastSpeedL = speedL;
     lastSpeedR = speedR;
-
-    // ####### LOG TO CONSOLE #######
-
 
     if (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN)) {
       enable = 0;
