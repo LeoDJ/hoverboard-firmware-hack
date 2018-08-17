@@ -10,18 +10,19 @@
 
 #define BAT_LOW_LVL1     36.0       // gently beeps at this voltage level. ~3.6V/cell
 #define BAT_LOW_LVL2     33.0       // your battery is almost empty. Charge now! ~3.3V/cell
-#define BAT_LOW_DEAD     31.0       // undervoltage lockout. ~3.1V/cell
+#define BAT_LOW_DEAD     29.0       // undervoltage lockout. ~3.1V/cell
 
 // ################################################################################
 
-#define DEBUG_SERIAL_USART3         // left sensor board cable, disable if ADC or PPM is used!
+#define DEBUG_SERIAL_USART2         // left sensor board cable, disable if ADC or PPM is used!
 //#define DEBUG_SERIAL_USART3         // right sensor board cable, disable if I2C (nunchuck) is used!
 #define DEBUG_BAUD       115200     // UART baud rate
 //#define DEBUG_SERIAL_SERVOTERM
 #define DEBUG_SERIAL_ASCII          // human readable output. i.e. "345;1337;0;0\n\r"
+#define DEBUG_SERIAL_ODOMETRY       // do ROS Node compatible output (only motor R/l on channels 0&1) 
 
 #define CONTROL_SERIAL_USART2
-#define CONTROL_BAUD       19200     // control via usart from eg an Arduino or raspberry
+#define CONTROL_BAUD       115200     // control via usart from eg an Arduino or raspberry
 // for Arduino, use void loop(void){ Serial.write((uint8_t *) &steer, sizeof(steer)); Serial.write((uint8_t *) &speed, sizeof(speed));delay(20); }
 
 //#define DEBUG_I2C_LCD               // standard 16x2 or larger text-lcd via i2c-converter on right sensor board cable
