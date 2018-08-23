@@ -1,9 +1,8 @@
 /*
-* This file is part of the hoverboard-firmware-hack project.
+* This file is part of the stmbl project.
 *
-* Copyright (C) 2017-2018 Rene Hopf <renehopf@mac.com>
-* Copyright (C) 2017-2018 Nico Stute <crinq@crinq.de>
-* Copyright (C) 2017-2018 Niklas Fauth <niklas.fauth@kit.fail>
+* Copyright (C) 2013-2018 Rene Hopf <renehopf@mac.com>
+* Copyright (C) 2013-2018 Nico Stute <crinq@crinq.de>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -43,15 +42,79 @@ TIM_HandleTypeDef htim_left;
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 I2C_HandleTypeDef hi2c2;
-UART_HandleTypeDef huart2;
-
-DMA_HandleTypeDef hdma_usart2_rx;
-DMA_HandleTypeDef hdma_usart2_tx;
 volatile adc_buf_t adc_buffer;
 
+#ifdef DEBUG_SERIAL_USART3
+void UART_Init() {
+  __HAL_RCC_USART3_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
-#ifdef CONTROL_SERIAL_USART2
+  UART_HandleTypeDef huart3;
+  huart3.Instance          = USART3;
+  huart3.Init.BaudRate     = DEBUG_BAUD;
+  huart3.Init.WordLength   = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits     = UART_STOPBITS_1;
+  huart3.Init.Parity       = UART_PARITY_NONE;
+  huart3.Init.Mode         = UART_MODE_TX;
+  huart3.Init.HwFlowCtl    = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart3);
 
+  USART3->CR3 |= USART_CR3_DMAT;  // | USART_CR3_DMAR | USART_CR3_OVRDIS;
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.Pin   = GPIO_PIN_10;
+  GPIO_InitStruct.Pull  = GPIO_PULLUP;
+  GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  DMA1_Channel2->CCR   = 0;
+  DMA1_Channel2->CPAR  = (uint32_t) & (USART3->DR);
+  DMA1_Channel2->CNDTR = 0;
+  DMA1_Channel2->CCR   = DMA_CCR_MINC | DMA_CCR_DIR;
+  DMA1->IFCR           = DMA_IFCR_CTCIF2 | DMA_IFCR_CHTIF2 | DMA_IFCR_CGIF2;
+}
+#endif
+
+#ifdef DEBUG_SERIAL_USART2
+void UART_Init() {
+  __HAL_RCC_USART2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  UART_HandleTypeDef huart2;
+  huart2.Instance          = USART2;
+  huart2.Init.BaudRate     = DEBUG_BAUD;
+  huart2.Init.WordLength   = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits     = UART_STOPBITS_1;
+  huart2.Init.Parity       = UART_PARITY_NONE;
+  huart2.Init.Mode         = UART_MODE_TX;
+  huart2.Init.HwFlowCtl    = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart2);
+
+  USART2->CR3 |= USART_CR3_DMAT;  // | USART_CR3_DMAR | USART_CR3_OVRDIS;
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.Pin   = GPIO_PIN_2;
+  GPIO_InitStruct.Pull  = GPIO_PULLUP;
+  GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  DMA1_Channel7->CCR   = 0;
+  DMA1_Channel7->CPAR  = (uint32_t) & (USART2->DR);
+  DMA1_Channel7->CNDTR = 0;
+  DMA1_Channel7->CCR   = DMA_CCR_MINC | DMA_CCR_DIR;
+  DMA1->IFCR           = DMA_IFCR_CTCIF7 | DMA_IFCR_CHTIF7 | DMA_IFCR_CGIF7;
+}
+#endif
+
+#ifdef CONTROL_USART2_RXTX
+
+extern DMA_HandleTypeDef hdma_usart2_rx;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+UART_HandleTypeDef huart2;
 
 void UART_Control_Init() {
   GPIO_InitTypeDef GPIO_InitStruct;
@@ -121,73 +184,6 @@ HAL_DMA_Init(&hdma_usart2_tx);
 }
 
 #endif
-
-#ifdef DEBUG_SERIAL_USART3
-void UART_Init() {
-  __HAL_RCC_USART3_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  UART_HandleTypeDef huart3;
-  huart3.Instance          = USART3;
-  huart3.Init.BaudRate     = DEBUG_BAUD;
-  huart3.Init.WordLength   = UART_WORDLENGTH_8B;
-  huart3.Init.StopBits     = UART_STOPBITS_1;
-  huart3.Init.Parity       = UART_PARITY_NONE;
-  huart3.Init.Mode         = UART_MODE_TX;
-  huart3.Init.HwFlowCtl    = UART_HWCONTROL_NONE;
-  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-  HAL_UART_Init(&huart3);
-
-  USART3->CR3 |= USART_CR3_DMAT;  // | USART_CR3_DMAR | USART_CR3_OVRDIS;
-
-  GPIO_InitTypeDef GPIO_InitStruct;
-  GPIO_InitStruct.Pin   = GPIO_PIN_10;
-  GPIO_InitStruct.Pull  = GPIO_PULLUP;
-  GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  DMA1_Channel2->CCR   = 0;
-  DMA1_Channel2->CPAR  = (uint32_t) & (USART3->DR);
-  DMA1_Channel2->CNDTR = 0;
-  DMA1_Channel2->CCR   = DMA_CCR_MINC | DMA_CCR_DIR;
-  DMA1->IFCR           = DMA_IFCR_CTCIF2 | DMA_IFCR_CHTIF2 | DMA_IFCR_CGIF2;
-}
-#endif
-
-#ifdef DEBUG_SERIAL_USART2
-void UART_Init() {
-  __HAL_RCC_USART2_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  UART_HandleTypeDef huart2;
-  huart2.Instance          = USART2;
-  huart2.Init.BaudRate     = DEBUG_BAUD;
-  huart2.Init.WordLength   = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits     = UART_STOPBITS_1;
-  huart2.Init.Parity       = UART_PARITY_NONE;
-  huart2.Init.Mode         = UART_MODE_TX;
-  huart2.Init.HwFlowCtl    = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  HAL_UART_Init(&huart2);
-
-  USART2->CR3 |= USART_CR3_DMAT;  // | USART_CR3_DMAR | USART_CR3_OVRDIS;
-
-  GPIO_InitTypeDef GPIO_InitStruct;
-  GPIO_InitStruct.Pin   = GPIO_PIN_2;
-  GPIO_InitStruct.Pull  = GPIO_PULLUP;
-  GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  DMA1_Channel7->CCR   = 0;
-  DMA1_Channel7->CPAR  = (uint32_t) & (USART2->DR);
-  DMA1_Channel7->CNDTR = 0;
-  DMA1_Channel7->CCR   = DMA_CCR_MINC | DMA_CCR_DIR;
-  DMA1->IFCR           = DMA_IFCR_CTCIF7 | DMA_IFCR_CHTIF7 | DMA_IFCR_CGIF7;
-}
-#endif
-
 /*
 void UART_Init() {
   __HAL_RCC_USART2_CLK_ENABLE();
@@ -222,7 +218,9 @@ void UART_Init() {
 */
 
 DMA_HandleTypeDef hdma_i2c2_rx;
+
 DMA_HandleTypeDef hdma_i2c2_tx;
+
 
 void I2C_Init()
 {
@@ -238,7 +236,7 @@ void I2C_Init()
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
   hi2c2.Instance = I2C2;
-  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.ClockSpeed = 200000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -307,6 +305,19 @@ void I2C_Init()
 
 }
 
+void Led_init(void){
+  GPIO_InitTypeDef GPIO_InitStruct;
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  /*Configure GPIO pin Output Level */
+  //HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pin : LED_Pin */
+  GPIO_InitStruct.Pin = LED_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+
+  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+}
+
 void MX_GPIO_Init(void) {
   GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -346,14 +357,14 @@ void MX_GPIO_Init(void) {
 
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 
-  GPIO_InitStruct.Pin = LED_PIN;
-  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
-
   GPIO_InitStruct.Pin = BUZZER_PIN;
   HAL_GPIO_Init(BUZZER_PORT, &GPIO_InitStruct);
 
   GPIO_InitStruct.Pin = OFF_PIN;
   HAL_GPIO_Init(OFF_PORT, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LED_PIN;
+  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
 
 
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
@@ -551,32 +562,29 @@ void MX_ADC1_Init(void) {
 
   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
 
-  sConfig.Channel = ADC_CHANNEL_14;  // pc4 left b
+  sConfig.Channel = ADC_CHANNEL_14;
   sConfig.Rank    = 1;
   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-  sConfig.Channel = ADC_CHANNEL_0;  // pa0 right a
+  sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank    = 2;
   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
   sConfig.SamplingTime = ADC_SAMPLETIME_13CYCLES_5;
 
-  sConfig.Channel = ADC_CHANNEL_11;  // pc1 left cur
+  sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank    = 3;
   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-  sConfig.Channel = ADC_CHANNEL_12;  // pc2 vbat
+  sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank    = 4;
   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-  //temperature requires at least 17.1uS sampling time
-  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
-
-  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;  // internal temp
+  sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank    = 5;
   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-  hadc1.Instance->CR2 |= ADC_CR2_DMA | ADC_CR2_TSVREFE;
+  hadc1.Instance->CR2 |= ADC_CR2_DMA;
 
   __HAL_ADC_ENABLE(&hadc1);
 
@@ -614,27 +622,25 @@ void MX_ADC2_Init(void) {
 
   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
 
-  sConfig.Channel = ADC_CHANNEL_15;  // pc5 left c
+  sConfig.Channel = ADC_CHANNEL_15;
   sConfig.Rank    = 1;
   HAL_ADC_ConfigChannel(&hadc2, &sConfig);
 
-  sConfig.Channel = ADC_CHANNEL_13;  // pc3 right b
+  sConfig.Channel = ADC_CHANNEL_13;
   sConfig.Rank    = 2;
   HAL_ADC_ConfigChannel(&hadc2, &sConfig);
 
   sConfig.SamplingTime = ADC_SAMPLETIME_13CYCLES_5;
 
-  sConfig.Channel = ADC_CHANNEL_10;  // pc0 right cur
+  sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank    = 3;
   HAL_ADC_ConfigChannel(&hadc2, &sConfig);
 
-  sConfig.Channel = ADC_CHANNEL_2;  // pa2 uart-l-tx
+  sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank    = 4;
   HAL_ADC_ConfigChannel(&hadc2, &sConfig);
 
-  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
-
-  sConfig.Channel = ADC_CHANNEL_3;  // pa3 uart-l-rx
+  sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank    = 5;
   HAL_ADC_ConfigChannel(&hadc2, &sConfig);
 

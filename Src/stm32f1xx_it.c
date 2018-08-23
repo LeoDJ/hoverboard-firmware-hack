@@ -164,6 +164,10 @@ void PendSV_Handler(void) {
 #ifdef CONTROL_PPM
 void PPM_SysTick_Callback(void);
 #endif
+
+//#ifdef CONTROL_PWM
+void PWM_SysTick_Callback(void);
+//#endif
 void SysTick_Handler(void) {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
@@ -174,6 +178,10 @@ void SysTick_Handler(void) {
 #ifdef CONTROL_PPM
   PPM_SysTick_Callback();
 #endif
+
+//#ifdef CONTROL_PWM
+  PWM_SysTick_Callback();
+//#endif
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -218,15 +226,6 @@ void DMA1_Channel5_IRQHandler(void)
 }
 #endif
 
-#ifdef CONTROL_PPM
-void EXTI3_IRQHandler(void)
-{
-    PPM_ISR_Callback();
-    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_3);
-}
-#endif
-
-#ifdef CONTROL_SERIAL_USART2
 void DMA1_Channel6_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
@@ -250,6 +249,26 @@ void DMA1_Channel7_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
 
   /* USER CODE END DMA1_Channel5_IRQn 1 */
+}
+
+#ifdef CONTROL_PPM
+void EXTI3_IRQHandler(void)
+{
+    PPM_ISR_Callback();
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_3);
+}
+#endif
+
+#ifdef CONTROL_PWM
+void EXTI3_IRQHandler(void)
+{
+    PWM_ISR_Callback_PA3();
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_3);
+}
+void EXTI2_IRQHandler(void)
+{
+    PWM_ISR_Callback_PA2();
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_2);
 }
 #endif
 
