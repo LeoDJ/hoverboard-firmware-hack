@@ -40,13 +40,20 @@ int cmd1;  // normalized input values. -1000 to 1000
 int cmd2;
 int cmd3;
 
-typedef struct{
+#pragma pack(push, 1)
+
+typedef struct {
    int16_t steer;
    int16_t speed;
+   uint8_t cmd;
    //uint32_t crc;
-} Serialcommand;
+} UartCommand;
 
-volatile Serialcommand command;
+#pragma pack(pop)
+
+volatile UartCommand uartCommand;
+
+unsigned char uartCommandBuffer[sizeof(uartCommand) * 2];
 
 uint8_t button1, button2;
 
@@ -180,8 +187,53 @@ int main(void) {
 
   enable = 1;  // enable motors
 
+   UART2_RX_DMA->CNDTR = sizeof(uartCommandBuffer);
+
+  int16_t rightReceive;
+  int16_t leftReceive;
+
+  HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer, sizeof(uartCommandBuffer));
+
+  uint8_t rxReady = 0;
+  uint16_t lastDMApos = 0;
+
+  uint16_t periodCounter = 0;
+
   while(1) {
     HAL_Delay(DELAY_IN_MAIN_LOOP); //delay in ms
+
+    if (UART2_RX_DMA->CNDTR == 0) {
+      //enable = 0;
+      //cmd1 = 0;
+      //cmd2 = 0;
+      HAL_UART_AbortReceive_IT(&huart2);
+      UART2_RX_DMA->CNDTR =  sizeof(uartCommandBuffer);
+      HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer,  sizeof(uartCommandBuffer));
+    }
+
+    if (UART2_RX_DMA->CNDTR == lastDMApos && rxready == 1) {
+      rxready = 0;
+      timeout = 0;
+      lastDMApos = 0;
+      //HAL_GPIO_WritePin(LED_PORT, LED_PIN);
+      memcpy(&uartCommand, uartCommandBuffer, sizeof(uartCommand));
+
+      if (uartCommand.startbyte == 42) {
+        //HAL_GPIO_WritePin(LED_PORT, LED_PIN, uartCommand.enable);
+        enable = uartCommand.enable & 1;
+        cmd1 = uartCommand.cmd * 990;
+        cmd2 = uartCommand.cmd * 990;
+      }
+
+      HAL_UART_AbortReceive_IT(&huart2);
+      UART2_RX_DMA->CNDTR = sizeof(uartCommandBuffer);
+      HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer,  sizeof(uartCommandBuffer));
+    }
+
+    if (UART2_RX_DMA->CNDTR <= sizeof(uartCommand)) {
+      rxready = 1;
+      lastDMApos = UART2_RX_DMA->CNDTR;
+    }
 
     #ifdef CONTROL_NUNCHUCK
       Nunchuck_Read();
