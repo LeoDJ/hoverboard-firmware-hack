@@ -53,7 +53,7 @@ typedef struct {
 
 volatile UartCommand uartCommand;
 
-unsigned char uartCommandBuffer[sizeof(uartCommand) * 2];
+unsigned char uartCommandBuffer[sizeof(UartCommand) * 2];
 
 uint8_t button1, button2;
 
@@ -154,12 +154,12 @@ int main(void) {
     I2C_Init();
     Nunchuck_Init();
   #endif
-
+/*
   #ifdef CONTROL_SERIAL_USART2
     UART_Control_Init();
     HAL_UART_Receive_DMA(&huart2, (uint8_t *)&command, 4);
   #endif
-
+*/
   #ifdef DEBUG_I2C_LCD
     I2C_Init();
     HAL_Delay(50);
@@ -187,7 +187,9 @@ int main(void) {
 
   enable = 1;  // enable motors
 
-   UART2_RX_DMA->CNDTR = sizeof(uartCommandBuffer);
+  UART_Control_Init();
+
+  UART2_RX_DMA->CNDTR = sizeof(uartCommandBuffer);
 
   int16_t rightReceive;
   int16_t leftReceive;
@@ -199,41 +201,58 @@ int main(void) {
 
   uint16_t periodCounter = 0;
 
+  consoleLog("init done");
+
   while(1) {
     HAL_Delay(DELAY_IN_MAIN_LOOP); //delay in ms
 
-    if (UART2_RX_DMA->CNDTR == 0) {
-      //enable = 0;
-      //cmd1 = 0;
-      //cmd2 = 0;
-      HAL_UART_AbortReceive_IT(&huart2);
-      UART2_RX_DMA->CNDTR =  sizeof(uartCommandBuffer);
-      HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer,  sizeof(uartCommandBuffer));
-    }
+    #ifdef CONTROL_SERIAL_USART2
 
-    if (UART2_RX_DMA->CNDTR == lastDMApos && rxready == 1) {
-      rxready = 0;
-      timeout = 0;
-      lastDMApos = 0;
-      //HAL_GPIO_WritePin(LED_PORT, LED_PIN);
-      memcpy(&uartCommand, uartCommandBuffer, sizeof(uartCommand));
-
-      if (uartCommand.startbyte == 42) {
-        //HAL_GPIO_WritePin(LED_PORT, LED_PIN, uartCommand.enable);
-        enable = uartCommand.enable & 1;
-        cmd1 = uartCommand.cmd * 990;
-        cmd2 = uartCommand.cmd * 990;
+      if (UART2_RX_DMA->CNDTR == 0) {
+        //enable = 0;
+        //cmd1 = 0;
+        //cmd2 = 0;
+        HAL_UART_AbortReceive_IT(&huart2);
+        UART2_RX_DMA->CNDTR =  sizeof(uartCommandBuffer);
+        HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer,  sizeof(uartCommandBuffer));
       }
 
-      HAL_UART_AbortReceive_IT(&huart2);
-      UART2_RX_DMA->CNDTR = sizeof(uartCommandBuffer);
-      HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer,  sizeof(uartCommandBuffer));
-    }
+      if (UART2_RX_DMA->CNDTR == lastDMApos && rxReady == 1) {
+        rxReady = 0;
+        timeout = 0;
+        lastDMApos = 0;
+        //HAL_GPIO_WritePin(LED_PORT, LED_PIN);
+        memcpy(&uartCommand, uartCommandBuffer, sizeof(uartCommand));
 
-    if (UART2_RX_DMA->CNDTR <= sizeof(uartCommand)) {
-      rxready = 1;
-      lastDMApos = UART2_RX_DMA->CNDTR;
-    }
+        /*if (uartCommand.startbyte == 42) {
+          //HAL_GPIO_WritePin(LED_PORT, LED_PIN, uartCommand.enable);
+          enable = uartCommand.enable & 1;
+          cmd1 = uartCommand.cmd * 990;
+          cmd2 = uartCommand.cmd * 990;
+        }*/
+        cmd1 = uartCommand.speed;
+        cmd2 = uartCommand.steer;
+        //uartCommand.cmd;
+
+        //debug output - does not get triggered
+        consoleLog("test");
+
+        HAL_UART_AbortReceive_IT(&huart2);
+        UART2_RX_DMA->CNDTR = sizeof(uartCommandBuffer);
+        HAL_UART_Receive_DMA(&huart2, (unsigned char*)&uartCommandBuffer,  sizeof(uartCommandBuffer));
+      }
+
+      if (UART2_RX_DMA->CNDTR <= sizeof(uartCommand)) {
+        rxReady = 1;
+        lastDMApos = UART2_RX_DMA->CNDTR;
+
+        //debug output - does not get triggered
+        char msg[100];
+        sprintf(msg, "%d", lastDMApos);
+        consoleLog(msg);
+      }
+
+    #endif
 
     #ifdef CONTROL_NUNCHUCK
       Nunchuck_Read();
@@ -263,13 +282,14 @@ int main(void) {
       timeout = 0;
     #endif
 
+    /*
     #ifdef CONTROL_SERIAL_USART2
       cmd1 = CLAMP((int16_t)command.steer, -1000, 1000);
       cmd2 = CLAMP((int16_t)command.speed, -1000, 1000);
 
       timeout = 0;
     #endif
-
+    */
 
     // ####### LOW-PASS FILTER #######
     steer = steer * (1.0 - FILTER) + cmd1 * FILTER;

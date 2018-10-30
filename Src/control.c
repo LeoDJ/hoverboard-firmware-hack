@@ -22,7 +22,7 @@ DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 extern UART_HandleTypeDef huart2;
 
-#define UART2_RX_DMA DMA1_Channel6
+
 #endif
 
 #ifdef CONTROL_PPM

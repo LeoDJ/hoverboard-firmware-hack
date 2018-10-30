@@ -25,7 +25,7 @@ void setScopeChannel(uint8_t ch, int16_t val) {
 }
 
 void consoleScope() {
-  #if defined DEBUG_SERIAL_SERVOTERM && defined DEBUG_SERIAL_USART3
+  #if defined DEBUG_SERIAL_SERVOTERM && (defined DEBUG_SERIAL_USART3 || defined DEBUG_SERIAL_USART2)
     uart_buf[0] = 0xff;
     uart_buf[1] = CLAMP(ch_buf[0]+127, 0, 255);
     uart_buf[2] = CLAMP(ch_buf[1]+127, 0, 255);
@@ -45,7 +45,7 @@ void consoleScope() {
     }
   #endif
 
-  #if defined DEBUG_SERIAL_ASCII && defined DEBUG_SERIAL_USART3
+  #if defined DEBUG_SERIAL_ASCII && (defined DEBUG_SERIAL_USART3 || defined DEBUG_SERIAL_USART2)
     memset(uart_buf, 0, sizeof(uart_buf));
 
     #ifdef DEBUG_SERIAL_ODOMETRY
@@ -65,5 +65,15 @@ void consoleScope() {
 
 void consoleLog(char *message)
 {
-    HAL_UART_Transmit_DMA(&huart2, (uint8_t *)message, strlen(message));
+    //HAL_UART_Transmit_DMA(&huart2, (uint8_t *)message, strlen(message));
+    memset(uart_buf, 0, sizeof(uart_buf));
+
+    memcpy(uart_buf, message, strlen(message));
+
+    if(UART_DMA_CHANNEL->CNDTR == 0) {
+      UART_DMA_CHANNEL->CCR &= ~DMA_CCR_EN;
+      UART_DMA_CHANNEL->CNDTR = strlen(uart_buf);
+      UART_DMA_CHANNEL->CMAR  = (uint32_t)uart_buf;
+      UART_DMA_CHANNEL->CCR |= DMA_CCR_EN;
+    }
 }
