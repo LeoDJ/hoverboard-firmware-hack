@@ -25,7 +25,7 @@
 #define BAT_LOW_LVL1            3.6       // gently beeps at this voltage level. [V/cell]
 #define BAT_LOW_LVL2_ENABLE     1         // to beep or not to beep, 1 or 0
 #define BAT_LOW_LVL2            3.5       // your battery is almost empty. Charge now! [V/cell]
-#define BAT_LOW_DEAD            3.37      // undervoltage poweroff. (while not driving) [V/cell]
+#define BAT_LOW_DEAD            3.0      // undervoltage poweroff. (while not driving) [V/cell]
 
 #define DC_CUR_LIMIT     15         // DC current limit in amps per motor. so 15 means it will draw 30A out of your battery. it does not disable motors, it is a soft current limit.
 
@@ -48,7 +48,7 @@
 // ############################### SERIAL DEBUG ###############################
 
 //#define DEBUG_SERIAL_USART2       // left sensor board cable, disable if ADC or PPM is used!
-#define DEBUG_SERIAL_USART3         // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
+// #define DEBUG_SERIAL_USART3         // right sensor board cable, disable if I2C (nunchuck or lcd) is used!
 
 //#define DEBUG_SERIAL_SERVOTERM
 #define DEBUG_SERIAL_ASCII          // "1:345 2:1337 3:0 4:0 5:0 6:0 7:0 8:0\r\n"
@@ -62,12 +62,12 @@
 // for Arduino, use void loop(void){ Serial.write((uint8_t *) &steer, sizeof(steer)); Serial.write((uint8_t *) &speed, sizeof(speed));delay(20); }
 //#define CONTROL_SERIAL_NAIVE_CRC                  // Add CRC32 check to control serial
 
-//#define CONTROL_SERIAL_PROTOCOL                     // enables processing of input characters through 'protocol.c'
-//  #define SERIAL_USART2_IT                        // Interface for CONTROL_SERIAL_PROTOCOL
+  #define CONTROL_SERIAL_PROTOCOL                     // enables processing of input characters through 'protocol.c'
+  // #define SERIAL_USART2_IT                        // Interface for CONTROL_SERIAL_PROTOCOL
   #define USART2_BAUD       19200                   // UART baud rate
   #define USART2_WORDLENGTH UART_WORDLENGTH_8B      // UART_WORDLENGTH_8B or UART_WORDLENGTH_9B
 
-//  #define SERIAL_USART3_IT                          // Interface for CONTROL_SERIAL_PROTOCOL
+  #define SERIAL_USART3_IT                          // Interface for CONTROL_SERIAL_PROTOCOL
   #define USART3_BAUD       115200                  // UART baud rate
   #define USART3_WORDLENGTH UART_WORDLENGTH_8B      // UART_WORDLENGTH_8B or UART_WORDLENGTH_9B
 
@@ -82,7 +82,7 @@
 
 // ###### CONTROL VIA TWO POTENTIOMETERS ######
 // ADC-calibration to cover the full poti-range: connect potis to left sensor board cable (0 to 3.3V) (do NOT use the red 15V wire in the cable!). see <How to calibrate>. turn the potis to minimum position, write value 1 to ADC1_MIN and value 2 to ADC2_MIN. turn to maximum position and repeat it for ADC?_MAX. make, flash and test it.
-#define CONTROL_ADC               // use ADC as input. disable DEBUG_SERIAL_USART2!
+// #define CONTROL_ADC               // use ADC as input. disable DEBUG_SERIAL_USART2!
 #define ADC1_MIN         0        // min ADC1-value while poti at minimum-position (0 - 4095)
 #define ADC1_ZERO     1500        // ADC1-value while poti at zero-position (0 - 4095)
 #define ADC1_MAX      4095        // max ADC1-value while poti at maximum-position (0 - 4095)
